@@ -52,3 +52,10 @@ boards目录
     SX1276WriteBuffer,  
     SX1276ReadBuffer  
 };  
+
+最后总编译project的时候:
++ 选取想要的应用.../apps中某个子文件里面的主函数main()
++ 选取所用的模块板子 .../boards 里面某个子文件夹 "board.h"
++ 选取对应的Lora芯片平台("radio.h"): e.g. .../radio/sx1276/
+
+
