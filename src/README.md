@@ -1,22 +1,22 @@
 
-应用程序目录apps
+### 应用程序目录apps
 + main()
 + only include "board.h" and "radio.h"
 
-Lora芯片平台目录 radio
+### Lora芯片平台目录 radio
 + 同一个头文件 "radio.h" 定义统一的函数接口: extern const struct Radio_s Radio; //callback functions
 + 不同的平台代码接口（真正的写好程序），放在不同文件夹下面 ../sx1276, .../sx1272 
 
-system目录 
+### system目录 
 + 定义了系统(MCU)统一的函数接口: uart.h, i2c.h, ...
 
-mac目录
+### mac目录
 + LoRaWAN协议MAC层，纯逻辑: LoRaMacSendOnChannel() ...
 + 调用了radio.h 里面的接口函数,  
   e.g. LoRaMacSendFrameOnChannel()   
   {... Radio.Send( LoRaMacBuffer, LoRaMacBufferPktLen )}; ...
 
-boards目录
+### boards目录
 + 非常重要，所有产品配置（硬件配置/软件固件配置）参数，接口都在此文件夹里面各个产品子目录配置。  
   包括子目录:  
              .../boards/Bleeper-72,  
@@ -53,9 +53,26 @@ boards目录
     SX1276ReadBuffer  
 };  
 
-最后总编译project的时候:
+### 最后总编译project的时候:
 + 选取想要的应用.../apps中某个子文件里面的主函数main()
 + 选取所用的模块板子 .../boards 里面某个子文件夹 "board.h"
 + 选取对应的Lora芯片平台("radio.h"): e.g. .../radio/sx1276/
 
+---
 
+
+```mermaid
+graph TD
+
+    client1-->|read / write|SVN((SVN server))
+
+    client2-->|read only|SVN
+
+    client3-->|read / write|SVN
+
+    client4-->|read only|SVN
+
+    client5(...)-->SVN
+
+    SVN---|store the data|sharedrive
+```
