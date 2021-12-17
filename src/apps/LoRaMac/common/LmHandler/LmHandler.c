@@ -187,13 +187,6 @@ static void MlmeConfirm( MlmeConfirm_t *mlmeConfirm );
 static void MlmeIndication( MlmeIndication_t *mlmeIndication );
 
 /*!
- * Requests network server time update
- *
- * \retval status Returns \ref LORAMAC_HANDLER_SET if joined else \ref LORAMAC_HANDLER_RESET
- */
-static LmHandlerErrorStatus_t LmHandlerDeviceTimeReq( void );
-
-/*!
  * Starts the beacon search
  *
  * \retval status Returns \ref LORAMAC_HANDLER_SET if joined else \ref LORAMAC_HANDLER_RESET
@@ -224,6 +217,8 @@ typedef enum PackageNotifyTypes_e
  *                        [McpsConfirm_t, McpsIndication_t, MlmeConfirm_t, MlmeIndication_t]
  */
 static void LmHandlerPackagesNotify( PackageNotifyTypes_t notifyType, void *params );
+
+static bool LmHandlerPackageIsTxPending( void );
 
 static void LmHandlerPackagesProcess( void );
 
@@ -344,15 +339,9 @@ bool LmHandlerIsBusy( void )
         return true;
     }
 
-    for( int8_t i = 0; i < PKG_MAX_NUMBER; i++ )
+    if( LmHandlerPackageIsTxPending( ) == true )
     {
-        if( LmHandlerPackages[i] != NULL )
-        {
-            if( LmHandlerPackages[i]->IsTxPending( ) == true )
-            {
-                return true;
-            }
-        }
+        return true;
     }
 
     return false;
@@ -381,6 +370,13 @@ void LmHandlerProcess( void )
 
     // Call all packages process functions
     LmHandlerPackagesProcess( );
+
+    // Check if a package transmission is pending.
+    // If it is the case exit function earlier
+    if( LmHandlerPackageIsTxPending( ) == true )
+    {
+        return;
+    }
 
     // If a MAC layer scheduled uplink is still pending try to send it.
     if( IsUplinkTxPending == true )
@@ -514,7 +510,7 @@ LmHandlerErrorStatus_t LmHandlerSend( LmHandlerAppData_t *appData, LmHandlerMsgT
     }
 }
 
-static LmHandlerErrorStatus_t LmHandlerDeviceTimeReq( void )
+LmHandlerErrorStatus_t LmHandlerDeviceTimeReq( void )
 {
     LoRaMacStatus_t status;
     MlmeReq_t mlmeReq;
@@ -749,8 +745,7 @@ static void McpsIndication( McpsIndication_t *mcpsIndication )
     // Call packages RxProcess function
     LmHandlerPackagesNotify( PACKAGE_MCPS_INDICATION, mcpsIndication );
 
-    if( ( ( mcpsIndication->FramePending == true ) && ( LmHandlerGetCurrentClass( ) == CLASS_A ) ) ||
-        ( mcpsIndication->ResponseTimeout > 0 ) )
+    if( mcpsIndication->IsUplinkTxPending != 0 )
     {
         // The server signals that it has pending data to be sent.
         // We schedule an uplink as soon as possible to flush the server.
@@ -859,12 +854,6 @@ static void MlmeIndication( MlmeIndication_t *mlmeIndication )
 
     switch( mlmeIndication->MlmeIndication )
     {
-    case MLME_SCHEDULE_UPLINK:
-        {
-            // The MAC layer signals that we shall provide an uplink as soon as possible
-            IsUplinkTxPending = true;
-        }
-        break;
     case MLME_BEACON_LOST:
         {
             MibRequestConfirm_t mibReq;
@@ -1012,6 +1001,21 @@ static void LmHandlerPackagesNotify( PackageNotifyTypes_t notifyType, void *para
             }
         }
     }
+}
+
+static bool LmHandlerPackageIsTxPending( void )
+{
+    for( int8_t i = 0; i < PKG_MAX_NUMBER; i++ )
+    {
+        if( LmHandlerPackages[i] != NULL )
+        {
+            if( LmHandlerPackages[i]->IsTxPending( ) == true )
+            {
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
 static void LmHandlerPackagesProcess( void )
